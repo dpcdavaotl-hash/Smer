@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stick Runner — Endless Sketch Runner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f4f1ea;
+            font-family: 'Architects Daughter', cursive, sans-serif;
+            touch-action: none;
+        }
+
+        /* Notebook paper aesthetic */
+        .notebook-bg {
+            background-color: #fcfaf5;
+            background-image: 
+                linear-gradient(90deg, transparent 59px, #f2a6a6 59px, #f2a6a6 61px, transparent 61px),
+                linear-gradient(#e5e9f0 1px, transparent 1px);
+            background-size: 100% 28px;
+        }
+
+        .sketch-border {
+            border: 3px solid #18181b;
+            border-radius: 12px 16px 14px 18px / 16px 12px 18px 14px;
+            box-shadow: 5px 5px 0px #18181b;
+        }
+
+        .sketch-btn {
+            border: 3px solid #18181b;
+            border-radius: 10px 14px 12px 16px / 14px 10px 16px 12px;
+            box-shadow: 4px 4px 0px #18181b;
+            transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+            cursor: pointer;
+        }
+
+        .sketch-btn:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 5px 5px 0px #18181b;
+        }
+
+        .sketch-btn:active {
+            transform: translate(3px, 3px);
+            box-shadow: 1px 1px 0px #18181b;
+        }
+
+        .mono-num {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(-1deg); }
+            50% { transform: translateY(-6px) rotate(1deg); }
+        }
+
+        .float-title {
+            animation: floatSlow 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="notebook-bg text-zinc-900 flex flex-col items-center justify-center relative">
+
+    <!-- Main Game Container -->
+    <div id="game-wrapper" class="relative w-full h-full flex flex-col justify-between overflow-hidden">
+        
+        <!-- Top HUD Bar -->
+        <header class="relative z-20 w-full px-4 sm:px-8 pt-4 flex items-center justify-between pointer-events-none">
+            <!-- Left: Score & High Score -->
+            <div class="flex flex-wrap items-center gap-3 sm:gap-5 pointer-events-auto">
+                <div class="bg-[#fcfaf5]/95 px-3.5 py-1.5 sketch-border flex items-baseline gap-2">
+                    <span class="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-500">Dist</span>
+                    <span id="hud-score" class="mono-num text-xl sm:text-2xl font-extrabold text-zinc-900">0000m</span>
+                </div>
+
+                <div class="bg-[#fcfaf5]/95 px-3.5 py-1.5 sketch-border flex items-baseline gap-2">
+                    <span class="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-500">Best</span>
+                    <span id="hud-best" class="mono-num text-lg sm:text-xl font-bold text-zinc-700">0000m</span>
+                </div>
+
+                <div class="hidden sm:flex bg-[#fcfaf5]/95 px-3 py-1.5 sketch-border items-baseline gap-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Speed</span>
+                    <span id="hud-speed" class="mono-num text-base font-bold text-zinc-800">1.0x</span>
+                </div>
+            </div>
+
+            <!-- Right: Stars Collected & Sound Toggle -->
+            <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+                <div class="bg-[#fcfaf5]/95 px-3 py-1.5 sketch-border flex items-center gap-1.5" title="Bonus Stars Collected">
+                    <svg class="w-5 h-5 text-amber-500 fill-amber-400 stroke-zinc-900 stroke-2" viewBox="0 0 24 24">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <span id="hud-stars" class="mono-num text-base sm:text-lg font-extrabold">0</span>
+                </div>
+
+                <button id="btn-mute" aria-label="Toggle Sound" class="bg-[#fcfaf5] hover:bg-zinc-100 p-2.5 sketch-btn flex items-center justify-center">
+                    <!-- Sound On Icon -->
+                    <svg id="icon-sound-on" class="w-5 h-5 sm:w-6 sm:h-6 stroke-zinc-900 fill-none stroke-[2.2]" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    </svg>
+                    <!-- Sound Off Icon (Hidden by default) -->
+                    <svg id="icon-sound-off" class="w-5 h-5 sm:w-6 sm:h-6 stroke-zinc-900 fill-none stroke-[2.2] hidden" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <line x1="23" y1="9" x2="17" y2="15"></line>
+                        <line x1="17" y1="9" x2="23" y2="15"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Fullscreen Interactive Canvas -->
+        <canvas id="game-canvas" class="absolute inset-0 z-10"></canvas>
+
+        <!-- Start Screen Overlay -->
+        <div id="start-overlay" class="fixed inset-0 z-30 flex items-center justify-center bg-zinc-900/20 backdrop-blur-[2px] p-4">
+            <div class="bg-[#fcfaf5] sketch-border max-w-md w-full p-6 sm:p-8 text-center flex flex-col items-center">
+                <!-- Decorative Stickman Header Doodle -->
+                <div class="mb-2 flex items-center justify-center gap-3">
+                    <svg class="w-12 h-12 stroke-zinc-900 fill-none stroke-[2.5]" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="36" cy="14" r="6"/>
+                        <path d="M34 20 L28 36"/>
+                        <path d="M32 24 L44 20 L48 14"/>
+                        <path d="M32 24 L20 28 L16 34"/>
+                        <path d="M28 36 L40 44 L46 54"/>
+                        <path d="M28 36 L18 46 L10 44"/>
+                        <line x1="4" y1="58" x2="60" y2="58" stroke-dasharray="4 4"/>
+                    </svg>
+                </div>
+
+                <h1 class="float-title text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 mb-1">
+                    STICK RUNNER
+                </h1>
+                <p class="text-sm sm:text-base text-zinc-600 mb-6">
+                    Leap crates, duck flying saws, and don't fall off the page!
+                </p>
+
+                <!-- Controls Grid -->
+                <div class="w-full grid grid-cols-2 gap-3 mb-6 text-left">
+                    <div class="border-2 border-zinc-900 rounded-xl p-3 bg-white/80">
+                        <div class="text-xs font-bold uppercase text-zinc-500 mb-1">Jump / Double Jump</div>
+                        <div class="text-sm sm:text-base font-bold text-zinc-900 flex items-center gap-1.5">
+                            <span class="px-2 py-0.5 border-2 border-zinc-900 rounded text-xs mono-num bg-zinc-100">SPACE</span>
+                            <span>/</span>
+                            <span class="px-2 py-0.5 border-2 border-zinc-900 rounded text-xs mono-num bg-zinc-100">↑</span>
+                            <span>/ Tap</span>
+                        </div>
+                    </div>
+
+                    <div class="border-2 border-zinc-900 rounded-xl p-3 bg-white/80">
+                        <div class="text-xs font-bold uppercase text-zinc-500 mb-1">Slide / Duck</div>
+                        <div class="text-sm sm:text-base font-bold text-zinc-900 flex items-center gap-1.5">
+                            <span class="px-2 py-0.5 border-2 border-zinc-900 rounded text-xs mono-num bg-zinc-100">↓</span>
+                            <span>/</span>
+                            <span class="px-2 py-0.5 border-2 border-zinc-900 rounded text-xs mono-num bg-zinc-100">S</span>
+                            <span>/ Hold</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btn-play" class="w-full py-3.5 px-6 bg-zinc-900 text-[#fcfaf5] hover:bg-zinc-800 text-xl sm:text-2xl font-bold tracking-wider sketch-btn">
+                    PLAY NOW
+                </button>
+                <p class="text-xs text-zinc-500 mt-3">Press <span class="mono-num font-bold">SPACE</span> or click to start</p>
+            </div>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="gameover-overlay" class="fixed inset-0 z-30 hidden items-center justify-center bg-zinc-900/25 backdrop-blur-[2px] p-4">
+            <div class="bg-[#fcfaf5] sketch-border max-w-md w-full p-6 sm:p-8 text-center flex flex-col items-center">
+                <div class="inline-block px-3 py-1 mb-2 border-2 border-zinc-900 rounded-full bg-red-100 text-red-900 text-xs font-bold uppercase tracking-widest">
+                    Wiped Out!
+                </div>
+                <h2 class="text-4xl sm:text-5xl font-extrabold text-zinc-900 mb-2">GAME OVER</h2>
+                <p id="death-reason" class="text-sm sm:text-base text-zinc-600 mb-5">You tripped over a sketch obstacle.</p>
+
+                <!-- Score Summary Card -->
+                <div class="w-full border-2 border-zinc-900 rounded-xl bg-white p-4 mb-6 grid grid-cols-3 gap-2">
+                    <div class="flex flex-col items-center border-r border-zinc-200">
+                        <span class="text-xs uppercase font-bold text-zinc-500">Distance</span>
+                        <span id="final-score" class="mono-num text-xl sm:text-2xl font-extrabold text-zinc-900">0m</span>
+                    </div>
+                    <div class="flex flex-col items-center border-r border-zinc-200">
+                        <span class="text-xs uppercase font-bold text-zinc-500">Stars</span>
+                        <span id="final-stars" class="mono-num text-xl sm:text-2xl font-extrabold text-amber-600">0</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs uppercase font-bold text-zinc-500">Best</span>
+                        <span id="final-best" class="mono-num text-xl sm:text-2xl font-extrabold text-zinc-900">0m</span>
+                    </div>
+                </div>
+
+                <div id="new-record-badge" class="hidden mb-4 px-4 py-1 bg-amber-300 border-2 border-zinc-900 rounded-lg font-bold text-sm text-zinc-900 transform -rotate-1">
+                    ★ NEW PERSONAL BEST! ★
+                </div>
+
+                <button id="btn-restart" class="w-full py-3.5 px-6 bg-zinc-900 text-[#fcfaf5] hover:bg-zinc-800 text-xl sm:text-2xl font-bold tracking-wider sketch-btn">
+                    PLAY AGAIN
+                </button>
+                <p class="text-xs text-zinc-500 mt-3">Press <span class="mono-num font-bold">SPACE</span> to run again</p>
+            </div>
+        </div>
+
+        <!-- Mobile / Touch Bottom Control Bar -->
+        <footer id="mobile-controls" class="relative z-20 w-full px-4 pb-5 pt-2 flex items-center justify-between gap-4 sm:hidden pointer-events-none">
+            <button id="touch-slide" class="pointer-events-auto flex-1 py-4 bg-[#fcfaf5]/90 active:bg-zinc-200 sketch-btn flex flex-col items-center justify-center">
+                <span class="text-lg font-extrabold tracking-wide">SLIDE</span>
+                <span class="text-[11px] text-zinc-500 font-bold uppercase">Hold to duck</span>
+            </button>
+            <button id="touch-jump" class="pointer-events-auto flex-1 py-4 bg-zinc-900 text-[#fcfaf5] active:bg-zinc-700 sketch-btn flex flex-col items-center justify-center">
+                <span class="text-lg font-extrabold tracking-wide">JUMP</span>
+                <span class="text-[11px] text-zinc-300 font-bold uppercase">Tap x2 Double</span>
+            </button>
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * STICK RUNNER - Endless Notebook Sketch Runner
+         * Single-file HTML5 Canvas Game with Procedural Web Audio Sound Effects
+         */
+
+        // ==========================================
+        // 1. WEB AUDIO SYNTHESIZER (Zero External Assets)
+        // ==========================================
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = localStorage.getItem('stickrunner_muted') === 'true';
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        this.ctx = new AudioCtx();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggleMute() {
+                this.muted = !this.muted;
+                localStorage.setItem('stickrunner_muted', this.muted);
+                return this.muted;
+            }
+
+            playJump(isDouble = false) {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = isDouble ? 'triangle' : 'sine';
+                const startFreq = isDouble ? 340 : 220;
+                const endFreq = isDouble ? 680 : 490;
+
+                osc.frequency.setValueAtTime(startFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.14);
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            playSlide() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                // Filtered noise whoosh for sliding
+                const bufferSize = this.ctx.sampleRate * 0.18;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(600, now);
+                filter.frequency.exponentialRampToValueAtTime(220, now + 0.18);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                noise.start(now);
+            }
+
+            playStar() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.setValueAtTime(1318.5, now + 0.06); // E6 chime
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.22);
+            }
+
+            playCrash() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(42, now + 0.35);
+
+                gain.gain.setValueAtTime(0.24, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.36);
+            }
+        }
+
+        // ==========================================
+        // 2. GAME CONFIGURATION & STATE
+        // ==========================================
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const sfx = new SoundFX();
+
+        // UI Elements
+        const hudScore = document.getElementById('hud-score');
+        const hudBest = document.getElementById('hud-best');
+        const hudSpeed = document.getElementById('hud-speed');
+        const hudStars = document.getElementById('hud-stars');
+        const startOverlay = document.getElementById('start-overlay');
+        const gameoverOverlay = document.getElementById('gameover-overlay');
+        const finalScoreEl = document.getElementById('final-score');
+        const finalStarsEl = document.getElementById('final-stars');
+        const finalBestEl = document.getElementById('final-best');
+        const newRecordBadge = document.getElementById('new-record-badge');
+        const deathReasonEl = document.getElementById('death-reason');
+
+        // Mute Button Setup
+        const btnMute = document.getElementById('btn-mute');
+        const iconSoundOn = document.getElementById('icon-sound-on');
+        const iconSoundOff = document.getElementById('icon-sound-off');
+
+        function updateMuteUI() {
+            if (sfx.muted) {
+                iconSoundOn.classList.add('hidden');
+                iconSoundOff.classList.remove('hidden');
+            } else {
+                iconSoundOn.classList.remove('hidden');
+                iconSoundOff.classList.add('hidden');
+            }
+        }
+        updateMuteUI();
+
+        btnMute.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sfx.toggleMute();
+            updateMuteUI();
+        });
+
+        // Game Constants & Responsive Scaling
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let groundY = height * 0.74;
+
+        const GAME_STATE = {
+            START: 0,
+            PLAYING: 1,
+            GAMEOVER: 2
+        };
+
+        let currentState = GAME_STATE.START;
+        let highScore = parseInt(localStorage.getItem('stickrunner_best') || '0', 10);
+        hudBest.textContent = `${String(highScore).padStart(4, '0')}m`;
+
+        // Physics & Progression Variables
+        const GRAVITY = 2450;
+        const JUMP_VELOCITY = -790;
+        const DOUBLE_JUMP_VELOCITY = -680;
+        const BASE_SPEED = 460;
+        const MAX_SPEED = 1120;
+
+        let gameSpeed = BASE_SPEED;
+        let distance = 0;
+        let starCount = 0;
+        let lastTime = 0;
+        let screenShake = 0;
+        let backgroundOffset = 0;
+
+        // Player Object
+        const player = {
+            x: 110,
+            y: 0,
+            vy: 0,
+            width: 34,
+            height: 76,
+            normalHeight: 76,
+            slideHeight: 36,
+            isGrounded: true,
+            isSliding: false,
+            jumpCount: 0,
+            maxJumps: 2,
+            runCycle: 0,
+            tumbleAngle: 0,
+            isDead: false,
+            jumpHeld: false,
+            jumpHoldTimer: 0
+        };
+
+        // World Entities
+        let floorSegments = [];
+        let obstacles = [];
+        let stars = [];
+        let particles = [];
+        let bgDoodles = [];
+
+        // ==========================================
+        // 3. CANVAS RESIZING & BACKGROUND DOODLES
+        // ==========================================
+        function resizeCanvas() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            // Position ground higher on mobile so bottom touch controls don't block view
+            const isMobile = width < 640;
+            groundY = isMobile ? height * 0.66 : height * 0.75;
+            player.x = isMobile ? Math.max(65, width * 0.16) : Math.max(120, width * 0.16);
+
+            if (currentState === GAME_STATE.START) {
+                player.y = groundY - player.normalHeight;
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function initBackgroundDoodles() {
+            bgDoodles = [];
+            const types = ['cloud', 'paperplane', 'star_doodle', 'spiral'];
+            for (let i = 0; i < 8; i++) {
+                bgDoodles.push({
+                    x: Math.random() * width * 1.5,
+                    y: 70 + Math.random() * (groundY - 170),
+                    type: types[i % types.length],
+                    scale: 0.7 + Math.random() * 0.5,
+                    speedFactor: 0.12 + Math.random() * 0.12
+                });
+            }
+        }
+        initBackgroundDoodles();
+
+        // ==========================================
+        // 4. GAME LIFECYCLE & SPAWNING LOGIC
+        // ==========================================
+        function resetGame() {
+            sfx.init();
+            currentState = GAME_STATE.PLAYING;
+            gameSpeed = BASE_SPEED;
+            distance = 0;
+            starCount = 0;
+            screenShake = 0;
+
+            player.height = player.normalHeight;
+            player.y = groundY - player.height;
+            player.vy = 0;
+            player.isGrounded = true;
+            player.isSliding = false;
+            player.jumpCount = 0;
+            player.runCycle = 0;
+            player.tumbleAngle = 0;
+            player.isDead = false;
+            player.jumpHeld = false;
+
+            obstacles = [];
+            stars = [];
+            particles = [];
+
+            // Create initial safe floor runway
+            floorSegments = [
+                { x: -100, width: width + 550, hasPitAfter: false }
+            ];
+
+            startOverlay.classList.add('hidden');
+            gameoverOverlay.classList.add('hidden');
+            gameoverOverlay.classList.remove('flex');
+            updateHUD();
+        }
+
+        function triggerGameOver(reason) {
+            if (currentState === GAME_STATE.GAMEOVER) return;
+            currentState = GAME_STATE.GAMEOVER;
+            player.isDead = true;
+            screenShake = 14;
+            sfx.playCrash();
+
+            // Burst of ink particles
+            spawnParticles(player.x + player.width / 2, player.y + player.height / 2, 22, '#18181b');
+
+            const finalDist = Math.floor(distance);
+            const totalScore = finalDist + starCount * 25;
+            const isNewBest = totalScore > highScore;
+
+            if (isNewBest) {
+                highScore = totalScore;
+                localStorage.setItem('stickrunner_best', highScore);
+                hudBest.textContent = `${String(highScore).padStart(4, '0')}m`;
+            }
+
+            deathReasonEl.textContent = reason;
+            finalScoreEl.textContent = `${totalScore}m`;
+            finalStarsEl.textContent = `${starCount} (+${starCount * 25}m)`;
+            finalBestEl.textContent = `${highScore}m`;
+
+            if (isNewBest && totalScore > 0) {
+                newRecordBadge.classList.remove('hidden');
+            } else {
+                newRecordBadge.classList.add('hidden');
+            }
+
+            setTimeout(() => {
+                gameoverOverlay.classList.remove('hidden');
+                gameoverOverlay.classList.add('flex');
+            }, 420);
+        }
+
+        function spawnParticles(x, y, count, color = '#18181b') {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 70 + Math.random() * 260;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 80,
+                    size: 2.5 + Math.random() * 3.5,
+                    life: 0.35 + Math.random() * 0.35,
+                    maxLife: 0.7,
+                    color
+                });
+            }
+        }
+
+        function spawnDoubleJumpRing(x, y) {
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * 140,
+                    vy: Math.sin(angle) * 45 + 30,
+                    size: 3,
+                    life: 0.32,
+                    maxLife: 0.32,
+                    color: '#52525b'
+                });
+            }
+        }
+
+        function generateWorldAhead() {
+            // 1. Ensure floor segments extend well beyond right edge
+            let lastSeg = floorSegments[floorSegments.length - 1];
+            while (lastSeg.x + lastSeg.width < width + 600) {
+                const speedRatio = (gameSpeed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED);
+                // Decide whether to place a gap/pit (only after 40m so player warms up)
+                const canSpawnGap = distance > 40 && !lastSeg.hasPitAfter && Math.random() < (0.28 + speedRatio * 0.12);
+
+                if (canSpawnGap) {
+                    const gapWidth = Math.min(240, 115 + speedRatio * 95 + Math.random() * 35);
+                    const nextPlatformWidth = 360 + Math.random() * 480;
+                    const newX = lastSeg.x + lastSeg.width + gapWidth;
+
+                    lastSeg.hasPitAfter = true;
+                    const newSeg = { x: newX, width: nextPlatformWidth, hasPitAfter: false };
+                    floorSegments.push(newSeg);
+
+                    // Place guiding arc of stars over the pit!
+                    if (Math.random() < 0.75) {
+                        const midX = lastSeg.x + lastSeg.width + gapWidth * 0.5;
+                        stars.push({ x: midX - 28, y: groundY - 85, radius: 11, collected: false, bob: 0 });
+                        stars.push({ x: midX, y: groundY - 108, radius: 11, collected: false, bob: 1 });
+                        stars.push({ x: midX + 28, y: groundY - 85, radius: 11, collected: false, bob: 2 });
+                    }
+
+                    // Spawn obstacle safely away from edges of new platform
+                    if (nextPlatformWidth > 460 && Math.random() < 0.75) {
+                        spawnObstacleOnSegment(newSeg.x + 190, newSeg.x + newSeg.width - 140);
+                    }
+                    lastSeg = newSeg;
+                } else {
+                    const segWidth = 420 + Math.random() * 450;
+                    const newSeg = { x: lastSeg.x + lastSeg.width, width: segWidth, hasPitAfter: false };
+                    floorSegments.push(newSeg);
+                    spawnObstacleOnSegment(newSeg.x + 120, newSeg.x + newSeg.width - 120);
+                    lastSeg = newSeg;
+                }
+            }
+        }
+
+        function spawnObstacleOnSegment(minX, maxX) {
+            if (maxX <= minX) return;
+            const spawnX = minX + Math.random() * (maxX - minX);
+
+            // Prevent spawning too close to previous obstacle
+            const prevObs = obstacles[obstacles.length - 1];
+            const minSpacing = Math.max(290, gameSpeed * 0.56);
+            if (prevObs && spawnX - prevObs.x < minSpacing) return;
+
+            const roll = Math.random();
+
+            if (roll < 0.34) {
+                // Type 1: Sketch Wooden Crate (Single or Stacked)
+                const isTall = distance > 90 && Math.random() < 0.35;
+                const w = 44;
+                const h = isTall ? 78 : 46;
+                obstacles.push({
+                    type: 'crate',
+                    x: spawnX,
+                    y: groundY - h,
+                    width: w,
+                    height: h,
+                    isTall
+                });
+                // Star above crate
+                if (Math.random() < 0.5) {
+                    stars.push({ x: spawnX + w / 2, y: groundY - h - 48, radius: 11, collected: false, bob: Math.random() * 5 });
+                }
+            } else if (roll < 0.64) {
+                // Type 2: Ground Spikes (2 or 3 sharp ink triangles)
+                const count = distance > 120 && Math.random() < 0.45 ? 3 : 2;
+                const w = count * 24;
+                const h = 34;
+                obstacles.push({
+                    type: 'spikes',
+                    x: spawnX,
+                    y: groundY - h,
+                    width: w,
+                    height: h,
+                    count
+                });
+            } else {
+                // Type 3: Overhead Hanging Beam / Spinning Ink Saw (Slide under!)
+                // Bottom of obstacle sits at groundY - 46, so standing stickman (76px) hits it,
+                // while sliding stickman (36px) clears it cleanly!
+                const isSaw = Math.random() < 0.55;
+                const w = isSaw ? 50 : 64;
+                const h = isSaw ? 50 : 48;
+                const clearance = 45;
+                obstacles.push({
+                    type: isSaw ? 'saw' : 'beam',
+                    x: spawnX,
+                    y: groundY - clearance - h,
+                    width: w,
+                    height: h,
+                    angle: 0
+                });
+
+                // Place a tempting low star underneath to encourage sliding!
+                if (Math.random() < 0.65) {
+                    stars.push({ x: spawnX + w / 2, y: groundY - 22, radius: 11, collected: false, bob: 0 });
+                }
+            }
+        }
+
+        // ==========================================
+        // 5. PLAYER CONTROLS (Keyboard, Mouse, Touch)
+        // ==========================================
+        function handleJumpStart() {
+            if (currentState === GAME_STATE.START) {
+                resetGame();
+                return;
+            }
+            if (currentState === GAME_STATE.GAMEOVER) {
+                resetGame();
+                return;
+            }
+
+            if (player.jumpCount < player.maxJumps) {
+                // Cancel slide when jumping
+                if (player.isSliding) {
+                    player.isSliding = false;
+                    player.height = player.normalHeight;
+                }
+
+                const isDouble = player.jumpCount === 1;
+                player.vy = isDouble ? DOUBLE_JUMP_VELOCITY : JUMP_VELOCITY;
+                player.isGrounded = false;
+                player.jumpCount++;
+                player.jumpHeld = true;
+                player.jumpHoldTimer = 0;
+
+                sfx.playJump(isDouble);
+                if (isDouble) {
+                    spawnDoubleJumpRing(player.x + player.width / 2, player.y + player.height);
+                } else {
+                    spawnParticles(player.x + player.width / 2, groundY, 7, '#52525b');
+                }
+            }
+        }
+
+        function handleJumpRelease() {
+            player.jumpHeld = false;
+            // Variable jump height: cut upward velocity if button released early
+            if (player.vy < -280) {
+                player.vy *= 0.58;
+            }
+        }
+
+        function handleSlideStart() {
+            if (currentState !== GAME_STATE.PLAYING) return;
+
+            if (!player.isGrounded) {
+                // Fast-fall slam if in mid-air!
+                player.vy = Math.max(player.vy + 520, 680);
+            }
+
+            if (!player.isSliding) {
+                player.isSliding = true;
+                const bottom = player.y + player.height;
+                player.height = player.slideHeight;
+                player.y = bottom - player.height;
+                sfx.playSlide();
+                if (player.isGrounded) {
+                    spawnParticles(player.x + 10, groundY, 6, '#71717a');
+                }
+            }
+        }
+
+        function handleSlideEnd() {
+            if (player.isSliding) {
+                player.isSliding = false;
+                const bottom = player.y + player.height;
+                player.height = player.normalHeight;
+                player.y = bottom - player.height;
+            }
+        }
+
+        // Keyboard Listeners
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                e.preventDefault();
+                handleJumpStart();
+            } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+                e.preventDefault();
+                handleSlideStart();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                handleJumpRelease();
+            } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+                handleSlideEnd();
+            }
+        });
+
+        // UI Button Listeners
+        document.getElementById('btn-play').addEventListener('click', resetGame);
+        document.getElementById('btn-restart').addEventListener('click', resetGame);
+
+        // Mobile Touch Buttons
+        const touchJumpBtn = document.getElementById('touch-jump');
+        const touchSlideBtn = document.getElementById('touch-slide');
+
+        touchJumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleJumpStart();
+        }, { passive: false });
+
+        touchJumpBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleJumpRelease();
+        });
+
+        touchSlideBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSlideStart();
+        }, { passive: false });
+
+        touchSlideBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleSlideEnd();
+        });
+
+        // Canvas Tap / Swipe Gesture Support
+        let touchStartY = 0;
+        canvas.addEventListener('touchstart', (e) => {
+            if (currentState !== GAME_STATE.PLAYING) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchStartY = touch.clientY;
+            // Tapping bottom 35% slides; tapping upper area jumps
+            if (touch.clientY > height * 0.68) {
+                handleSlideStart();
+            } else {
+                handleJumpStart();
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (currentState !== GAME_STATE.PLAYING) return;
+            const touch = e.touches[0];
+            if (touch.clientY - touchStartY > 32) {
+                handleSlideStart();
+            }
+        }, { passive: true });
+
+        canvas.addEventListener('touchend', () => {
+            handleJumpRelease();
+            handleSlideEnd();
+        });
+
+        // Desktop Mouse Click on Canvas to Jump
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && currentState === GAME_STATE.PLAYING) {
+                handleJumpStart();
+            }
+        });
+        canvas.addEventListener('mouseup', () => {
+            handleJumpRelease();
+        });
+
+        // ==========================================
+        // 6. UPDATE & PHYSICS SIMULATION
+        // ==========================================
+        function updateHUD() {
+            const totalDist = Math.floor(distance) + starCount * 25;
+            hudScore.textContent = `${String(totalDist).padStart(4, '0')}m`;
+            hudStars.textContent = starCount;
+            const mult = (gameSpeed / BASE_SPEED).toFixed(1);
+            hudSpeed.textContent = `${mult}x`;
+        }
+
+        function update(dt) {
+            if (screenShake > 0) {
+                screenShake = Math.max(0, screenShake - dt * 45);
+            }
+
+            // Update particles even during Game Over
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.vy += 650 * dt;
+                p.life -= dt;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            if (currentState === GAME_STATE.GAMEOVER) {
+                // Tumble physics for stickman after crash
+                player.vy += GRAVITY * dt;
+                player.y += player.vy * dt;
+                player.tumbleAngle += 9 * dt;
+                return;
+            }
+
+            if (currentState !== GAME_STATE.PLAYING) {
+                // Gentle idle breathing animation on Start Screen
+                player.runCycle += dt * 4;
+                return;
+            }
+
+            // Gradually accelerate speed
+            gameSpeed = Math.min(MAX_SPEED, BASE_SPEED + distance * 0.42);
+            distance += (gameSpeed * dt) / 26;
+            backgroundOffset = (backgroundOffset + gameSpeed * dt) % 1000;
+
+            // Scroll background doodles
+            for (const d of bgDoodles) {
+                d.x -= gameSpeed * d.speedFactor * dt;
+                if (d.x < -120) {
+                    d.x = width + 80 + Math.random() * 140;
+                    d.y = 70 + Math.random() * (groundY - 170);
+                }
+            }
+
+            // Player Vertical Physics
+            if (player.jumpHeld && player.jumpHoldTimer < 0.16 && player.vy < 0) {
+                player.vy -= 620 * dt;
+                player.jumpHoldTimer += dt;
+            }
+
+            player.vy += GRAVITY * dt;
+            player.y += player.vy * dt;
+
+            // Check if player is currently over solid ground
+            const footCenterX = player.x + player.width * 0.5;
+            const footLeftX = player.x + 8;
+            const footRightX = player.x + player.width - 8;
+
+            let overSolidGround = false;
+            for (const seg of floorSegments) {
+                if ((footLeftX >= seg.x && footLeftX <= seg.x + seg.width) ||
+                    (footRightX >= seg.x && footRightX <= seg.x + seg.width) ||
+                    (footCenterX >= seg.x && footCenterX <= seg.x + seg.width)) {
+                    overSolidGround = true;
+                    break;
+                }
+            }
+
+            // Ground landing check
+            if (overSolidGround && player.y + player.height >= groundY && player.vy >= 0 && player.y + player.height <= groundY + 34) {
+                if (!player.isGrounded && player.vy > 250) {
+                    spawnParticles(footCenterX, groundY, 5, '#52525b');
+                }
+                player.y = groundY - player.height;
+                player.vy = 0;
+                player.isGrounded = true;
+                player.jumpCount = 0;
+            } else {
+                player.isGrounded = false;
+            }
+
+            // Pit fall check
+            if (player.y > height + 40) {
+                triggerGameOver("You fell into an ink pit!");
+                return;
+            }
+
+            // Advance running leg/arm animation cycle
+            if (player.isGrounded && !player.isSliding) {
+                player.runCycle += (gameSpeed / BASE_SPEED) * 15 * dt;
+            }
+
+            // Scroll Floor Segments
+            for (let i = floorSegments.length - 1; i >= 0; i--) {
+                floorSegments[i].x -= gameSpeed * dt;
+                if (floorSegments[i].x + floorSegments[i].width < -200) {
+                    floorSegments.splice(i, 1);
+                }
+            }
+
+            generateWorldAhead();
+
+            // Forgiving hitbox padding (makes controls feel crisp and fair)
+            const pBox = {
+                x: player.x + 7,
+                y: player.y + 5,
+                w: player.width - 14,
+                h: player.height - 8
+            };
+
+            // Update & Collide Obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.x -= gameSpeed * dt;
+                if (obs.type === 'saw') {
+                    obs.angle -= 8 * dt;
+                }
+
+                if (obs.x + obs.width < -100) {
+                    obstacles.splice(i, 1);
+                    continue;
+                }
+
+                // Slightly inset obstacle hitbox for fair near-misses
+                const oBox = {
+                    x: obs.x + 5,
+                    y: obs.y + 5,
+                    w: obs.width - 10,
+                    h: obs.height - 8
+                };
+
+                if (rectsOverlap(pBox, oBox)) {
+                    const msg = obs.type === 'crate'
+                        ? "You smashed straight into a crate!"
+                        : obs.type === 'spikes'
+                        ? "Ouch! Watch out for sketchy spikes."
+                        : "Duck under high beams and flying saws!";
+                    triggerGameOver(msg);
+                    return;
+                }
+            }
+
+            // Update & Collect Stars
+            for (let i = stars.length - 1; i >= 0; i--) {
+                const st = stars[i];
+                st.x -= gameSpeed * dt;
+                st.bob += 5 * dt;
+
+                if (st.x < -60) {
+                    stars.splice(i, 1);
+                    continue;
+                }
+
+                if (!st.collected) {
+                    const starY = st.y + Math.sin(st.bob) * 4;
+                    const dx = (player.x + player.width / 2) - st.x;
+                    const dy = (player.y + player.height / 2) - starY;
+                    if (Math.hypot(dx, dy) < st.radius + 26) {
+                        st.collected = true;
+                        starCount++;
+                        sfx.playStar();
+                        spawnParticles(st.x, starY, 10, '#f59e0b');
+                    }
+                }
+            }
+
+            updateHUD();
+        }
+
+        function rectsOverlap(a, b) {
+            return a.x < b.x + b.w &&
+                   a.x + a.w > b.x &&
+                   a.y < b.y + b.h &&
+                   a.y + a.h > b.y;
+        }
+
+        // ==========================================
+        // 7. HAND-DRAWN SKETCH RENDERING
+        // ==========================================
+        function drawBackgroundDoodles() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(24, 24, 27, 0.14)';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            for (const d of bgDoodles) {
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.scale(d.scale, d.scale);
+
+                if (d.type === 'cloud') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 16, Math.PI * 0.5, Math.PI * 1.5);
+                    ctx.arc(20, -8, 20, Math.PI, Math.PI * 2);
+                    ctx.arc(42, 0, 16, Math.PI * 1.5, Math.PI * 0.5);
+                    ctx.closePath();
+                    ctx.stroke();
+                } else if (d.type === 'paperplane') {
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(36, -10);
+                    ctx.lineTo(14, 6);
+                    ctx.lineTo(10, 16);
+                    ctx.lineTo(18, 8);
+                    ctx.lineTo(28, 12);
+                    ctx.lineTo(36, -10);
+                    ctx.stroke();
+                } else if (d.type === 'spiral') {
+                    ctx.beginPath();
+                    for (let a = 0; a < 18; a += 0.3) {
+                        const r = a * 1.1;
+                        const px = Math.cos(a) * r;
+                        const py = Math.sin(a) * r;
+                        if (a === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.stroke();
+                } else {
+                    // Little 4-point sparkle doodle
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12);
+                    ctx.lineTo(3, -3);
+                    ctx.lineTo(12, 0);
+                    ctx.lineTo(3, 3);
+                    ctx.lineTo(0, 12);
+                    ctx.lineTo(-3, 3);
+                    ctx.lineTo(-12, 0);
+                    ctx.lineTo(-3, -3);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        function drawFloor() {
+            ctx.save();
+            ctx.strokeStyle = '#18181b';
+            ctx.fillStyle = '#f4f0e6';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            for (const seg of floorSegments) {
+                // Solid earth block under the ink line
+                ctx.fillRect(seg.x, groundY, seg.width, height - groundY + 10);
+
+                // Main thick hand-drawn top ground line
+                ctx.beginPath();
+                ctx.moveTo(seg.x, groundY);
+                ctx.lineTo(seg.x + seg.width, groundY);
+                ctx.stroke();
+
+                // Sketchy diagonal hatch marks beneath ground line
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(seg.x, groundY, seg.width, 28);
+                ctx.clip();
+
+                ctx.strokeStyle = 'rgba(24, 24, 27, 0.25)';
+                ctx.lineWidth = 1.8;
+                const step = 22;
+                const startX = Math.floor(seg.x / step) * step;
+                for (let hx = startX; hx < seg.x + seg.width + step; hx += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(hx, groundY + 2);
+                    ctx.lineTo(hx - 12, groundY + 18);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        function drawStickman() {
+            ctx.save();
+            const centerX = player.x + player.width / 2;
+            const bottomY = player.y + player.height;
+
+            // Ground shadow
+            if (player.isGrounded && !player.isDead) {
+                ctx.fillStyle = 'rgba(24, 24, 27, 0.14)';
+                ctx.beginPath();
+                ctx.ellipse(centerX, groundY + 2, player.isSliding ? 26 : 16, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.strokeStyle = '#18181b';
+            ctx.fillStyle = '#fcfaf5';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (player.isDead) {
+                // Tumbling crash pose
+                ctx.translate(centerX, player.y + player.height / 2);
+                ctx.rotate(player.tumbleAngle);
+
+                // Head with X eyes
+                ctx.beginPath();
+                ctx.arc(0, -22, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Torso & flailing limbs
+                ctx.beginPath();
+                ctx.moveTo(0, -12);
+                ctx.lineTo(0, 12);
+                ctx.moveTo(0, -6);
+                ctx.lineTo(-18, -18);
+                ctx.moveTo(0, -6);
+                ctx.lineTo(18, -14);
+                ctx.moveTo(0, 12);
+                ctx.lineTo(-16, 28);
+                ctx.moveTo(0, 12);
+                ctx.lineTo(16, 26);
+                ctx.stroke();
+
+                ctx.restore();
+                return;
+            }
+
+            if (player.isSliding) {
+                // Baseball-slide pose low to the ground
+                const hipX = centerX - 8;
+                const hipY = bottomY - 10;
+                const shoulderX = centerX - 20;
+                const shoulderY = bottomY - 22;
+
+                // Speed lines behind sliding player
+                ctx.save();
+                ctx.strokeStyle = 'rgba(24, 24, 27, 0.35)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(shoulderX - 16, shoulderY - 4);
+                ctx.lineTo(shoulderX - 38, shoulderY - 4);
+                ctx.moveTo(hipX - 18, hipY);
+                ctx.lineTo(hipX - 44, hipY);
+                ctx.stroke();
+                ctx.restore();
+
+                // Head
+                ctx.beginPath();
+                ctx.arc(shoulderX - 4, shoulderY - 10, 9.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Headband trail
+                ctx.beginPath();
+                ctx.moveTo(shoulderX - 13, shoulderY - 12);
+                ctx.lineTo(shoulderX - 24, shoulderY - 16);
+                ctx.stroke();
+
+                // Torso leaning back
+                ctx.beginPath();
+                ctx.moveTo(shoulderX, shoulderY);
+                ctx.lineTo(hipX, hipY);
+
+                // Front extended leg
+                ctx.moveTo(hipX, hipY);
+                ctx.lineTo(hipX + 26, bottomY - 4);
+
+                // Back tucked leg
+                ctx.moveTo(hipX, hipY);
+                ctx.lineTo(hipX + 8, bottomY - 14);
+                ctx.lineTo(hipX + 2, bottomY - 4);
+
+                // Trailing arm
+                ctx.moveTo(shoulderX, shoulderY);
+                ctx.lineTo(shoulderX - 12, bottomY - 6);
+                ctx.stroke();
+
+                ctx.restore();
+                return;
+            }
+
+            // Running or Jumping Pose
+            const bounce = player.isGrounded ? Math.abs(Math.sin(player.runCycle)) * 4 : 0;
+            const headX = centerX + 4;
+            const headY = player.y + 11 + bounce;
+            const shoulderX = centerX + 1;
+            const shoulderY = headY + 11;
+            const hipX = centerX - 3;
+            const hipY = shoulderY + 24;
+
+            // Torso (slight athletic forward lean)
+            ctx.beginPath();
+            ctx.moveTo(shoulderX, shoulderY);
+            ctx.lineTo(hipX, hipY);
+            ctx.stroke();
+
+            // Head
+            ctx.beginPath();
+            ctx.arc(headX, headY, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Flowing headband/scarf tail for sense of motion
+            const scarfWave = Math.sin(player.runCycle * 1.4) * 3;
+            ctx.beginPath();
+            ctx.moveTo(headX - 9, headY - 2);
+            ctx.quadraticCurveTo(headX - 18, headY - 4 + scarfWave, headX - 25, headY + scarfWave);
+            ctx.stroke();
+
+            if (!player.isGrounded) {
+                // Dynamic mid-air jumping pose
+                // Front arm raised
+                ctx.beginPath();
+                ctx.moveTo(shoulderX, shoulderY + 2);
+                ctx.lineTo(shoulderX + 12, shoulderY - 6);
+                ctx.lineTo(shoulderX + 18, shoulderY - 14);
+                // Back arm back
+                ctx.moveTo(shoulderX, shoulderY + 2);
+                ctx.lineTo(shoulderX - 12, shoulderY + 10);
+                // Front knee up
+                ctx.moveTo(hipX, hipY);
+                ctx.lineTo(hipX + 14, hipY + 8);
+                ctx.lineTo(hipX + 10, hipY + 22);
+                // Back leg trailing
+                ctx.moveTo(hipX, hipY);
+                ctx.lineTo(hipX - 12, hipY + 14);
+                ctx.lineTo(hipX - 20, hipY + 22);
+                ctx.stroke();
+            } else {
+                // Articulated Running Cycle (2 legs + 2 arms)
+                const phase = player.runCycle;
+                drawLimb(hipX, hipY, phase, true);
+                drawLimb(hipX, hipY, phase + Math.PI, true);
+                drawLimb(shoulderX, shoulderY + 2, phase + Math.PI, false);
+                drawLimb(shoulderX, shoulderY + 2, phase, false);
+            }
+
+            ctx.restore();
+        }
+
+        function drawLimb(originX, originY, phase, isLeg) {
+            const swing = Math.sin(phase);
+            if (isLeg) {
+                const thighLen = 15;
+                const calfLen = 15;
+                const thighAngle = swing * 0.85;
+                const kneeX = originX + Math.sin(thighAngle) * thighLen;
+                const kneeY = originY + Math.cos(thighAngle) * thighLen;
+
+                // Knee bends backward naturally during stride
+                const bend = Math.max(0, -Math.cos(phase)) * 1.15;
+                const calfAngle = thighAngle - bend;
+                const footX = kneeX + Math.sin(calfAngle) * calfLen;
+                const footY = kneeY + Math.cos(calfAngle) * calfLen;
+
+                ctx.beginPath();
+                ctx.moveTo(originX, originY);
+                ctx.lineTo(kneeX, kneeY);
+                ctx.lineTo(footX, footY);
+                ctx.stroke();
+            } else {
+                const upperLen = 12;
+                const foreLen = 11;
+                const armAngle = swing * 0.9;
+                const elbowX = originX + Math.sin(armAngle) * upperLen;
+                const elbowY = originY + Math.cos(armAngle) * upperLen;
+
+                const elbowBend = 0.65 + Math.max(0, swing) * 0.4;
+                const handX = elbowX + Math.sin(armAngle + elbowBend) * foreLen;
+                const handY = elbowY + Math.cos(armAngle + elbowBend) * foreLen;
+
+                ctx.beginPath();
+                ctx.moveTo(originX, originY);
+                ctx.lineTo(elbowX, elbowY);
+                ctx.lineTo(handX, handY);
+                ctx.stroke();
+            }
+        }
+
+        function drawObstacles() {
+            ctx.save();
+            ctx.strokeStyle = '#18181b';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            for (const obs of obstacles) {
+                if (obs.type === 'crate') {
+                    // Sketch Wooden Box
+                    ctx.fillStyle = '#e7dcc8';
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+
+                    // Inner frame & diagonal brace
+                    const pad = 5;
+                    ctx.strokeRect(obs.x + pad, obs.y + pad, obs.width - pad * 2, obs.height - pad * 2);
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x + pad, obs.y + pad);
+                    ctx.lineTo(obs.x + obs.width - pad, obs.y + obs.height - pad);
+                    if (obs.isTall) {
+                        ctx.moveTo(obs.x, obs.y + obs.height / 2);
+                        ctx.lineTo(obs.x + obs.width, obs.y + obs.height / 2);
+                    }
+                    ctx.stroke();
+                } else if (obs.type === 'spikes') {
+                    // Sharp Ink Spikes
+                    const spikeW = obs.width / obs.count;
+                    ctx.fillStyle = '#27272a';
+                    for (let s = 0; s < obs.count; s++) {
+                        const sx = obs.x + s * spikeW;
+                        ctx.beginPath();
+                        ctx.moveTo(sx, obs.y + obs.height);
+                        ctx.lineTo(sx + spikeW / 2, obs.y);
+                        ctx.lineTo(sx + spikeW, obs.y + obs.height);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } else if (obs.type === 'beam') {
+                    // Hanging Caution Beam (Slide Under)
+                    ctx.fillStyle = '#fef08a';
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+
+                    // Hanging suspension lines to top of notebook
+                    ctx.save();
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x + 12, 0);
+                    ctx.lineTo(obs.x + 12, obs.y);
+                    ctx.moveTo(obs.x + obs.width - 12, 0);
+                    ctx.lineTo(obs.x + obs.width - 12, obs.y);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Hazard stripes inside beam
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.clip();
+                    ctx.fillStyle = '#18181b';
+                    for (let sx = obs.x - 20; sx < obs.x + obs.width + 20; sx += 18) {
+                        ctx.beginPath();
+                        ctx.moveTo(sx, obs.y + obs.height);
+                        ctx.lineTo(sx + 8, obs.y + obs.height);
+                        ctx.lineTo(sx + 18, obs.y);
+                        ctx.lineTo(sx + 10, obs.y);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                } else if (obs.type === 'saw') {
+                    // Spinning Ink Buzzsaw (Slide Under)
+                    const cx = obs.x + obs.width / 2;
+                    const cy = obs.y + obs.height / 2;
+                    const outerR = obs.width / 2;
+                    const innerR = outerR * 0.65;
+                    const teeth = 10;
+
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(obs.angle);
+
+                    ctx.fillStyle = '#d4d4d8';
+                    ctx.beginPath();
+                    for (let t = 0; t < teeth * 2; t++) {
+                        const r = t % 2 === 0 ? outerR : innerR;
+                        const a = (t / (teeth * 2)) * Math.PI * 2;
+                        const px = Math.cos(a) * r;
+                        const py = Math.sin(a) * r;
+                        if (t === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Center hub
+                    ctx.fillStyle = '#18181b';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawStars() {
+            ctx.save();
+            ctx.strokeStyle = '#18181b';
+            ctx.fillStyle = '#facc15';
+            ctx.lineWidth = 2.2;
+            ctx.lineJoin = 'round';
+
+            for (const st of stars) {
+                if (st.collected) continue;
+                const sy = st.y + Math.sin(st.bob) * 4;
+                const spikes = 5;
+                const outerR = st.radius;
+                const innerR = st.radius * 0.48;
+
+                ctx.beginPath();
+                for (let i = 0; i < spikes * 2; i++) {
+                    const r = i % 2 === 0 ? outerR : innerR;
+                    const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                    const px = st.x + Math.cos(angle) * r;
+                    const py = sy + Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawParticles() {
+            ctx.save();
+            for (const p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.save();
+            if (screenShake > 0) {
+                const dx = (Math.random() - 0.5) * screenShake;
+                const dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+            }
+
+            drawBackgroundDoodles();
+            drawFloor();
+            drawStars();
+            drawObstacles();
+            drawStickman();
+            drawParticles();
+
+            ctx.restore();
+        }
+
+        // ==========================================
+        // 8. MAIN ANIMATION LOOP
+        // ==========================================
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            // Cap delta time to prevent physics tunneling on tab switch
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+            lastTime = timestamp;
+
+            update(dt);
+            render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function () {
+            resizeCanvas();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
